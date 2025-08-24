@@ -30,7 +30,7 @@ const printer = new PdfPrinter({
 /**
  * Builds a PDF document of the first 100 installments.
  */
-export async function buildInstallmentsPdf(): Promise<Buffer> {
+export async function buildInstallmentsPdf(): Promise<Uint8Array> {
   const installments = await prisma.installment.findMany({
     take: 100,
     orderBy: { dueDate: 'asc' },
@@ -108,9 +108,9 @@ export async function buildInstallmentsPdf(): Promise<Buffer> {
 
   return new Promise((resolve, reject) => {
     const pdfDoc = printer.createPdfKitDocument(docDefinition);
-    const chunks: Buffer[] = [];
+    const chunks: any[] = [];
     pdfDoc.on('data', chunk => chunks.push(chunk));
-    pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+    pdfDoc.on('end', () => resolve(new Uint8Array(Buffer.concat(chunks))));
     pdfDoc.on('error', err => reject(err));
     pdfDoc.end();
   });
@@ -119,7 +119,7 @@ export async function buildInstallmentsPdf(): Promise<Buffer> {
 /**
  * Builds an Excel file of all bank import records.
  */
-export async function buildBankExcel(): Promise<Buffer> {
+export async function buildBankExcel(): Promise<Uint8Array> {
     const bankImports = await prisma.bankImport.findMany({
         orderBy: { date: 'desc' }
     });
@@ -148,5 +148,5 @@ export async function buildBankExcel(): Promise<Buffer> {
     })));
 
     const buffer = await workbook.xlsx.writeBuffer();
-    return buffer as Buffer;
+    return new Uint8Array(buffer);
 }
