@@ -23,7 +23,8 @@ const printer = new PdfPrinter({
 });
 
 // To use the virtual file system, we need to pass it to the printer instance
-printer.vfs = vfs;
+// We cast to `any` because the type definitions for pdfmake are incomplete and don't include the `vfs` property.
+(printer as any).vfs = vfs;
 
 
 /**
