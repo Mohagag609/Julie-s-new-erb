@@ -4,7 +4,8 @@ import { buildBankExcel } from '@/lib/reporting';
 export async function GET() {
   try {
     const excelBuffer = await buildBankExcel();
-    const blob = new Blob([excelBuffer]);
+    const uint8Array = new Uint8Array(excelBuffer);
+    const blob = new Blob([uint8Array]);
 
     return new NextResponse(blob, {
       status: 200,
