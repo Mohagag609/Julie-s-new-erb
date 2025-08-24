@@ -4,8 +4,9 @@ import { buildBankExcel } from '@/lib/reporting';
 export async function GET() {
   try {
     const excelBuffer = await buildBankExcel();
+    const blob = new Blob([excelBuffer]);
 
-    return new NextResponse(excelBuffer, {
+    return new NextResponse(blob, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

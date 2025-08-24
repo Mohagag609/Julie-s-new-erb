@@ -4,8 +4,9 @@ import { buildInstallmentsPdf } from '@/lib/reporting';
 export async function GET() {
   try {
     const pdfBuffer = await buildInstallmentsPdf();
+    const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(blob, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
