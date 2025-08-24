@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createVoucherReceipt, createVoucherPayment } from '@/lib/accounting';
 import { prisma } from '@/lib/prisma';
+import Decimal from 'decimal.js';
 
 const VoucherSchema = z.object({
   kind: z.enum(['receipt', 'payment']),
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
         date: data.date,
         cashboxId: data.cashboxId,
         creditAccountId: data.accountId,
-        amount: data.amount,
+        amount: new Decimal(data.amount),
         note: data.note,
       });
     } else { // payment
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
         date: data.date,
         cashboxId: data.cashboxId,
         debitAccountId: data.accountId,
-        amount: data.amount,
+        amount: new Decimal(data.amount),
         note: data.note,
       });
     }

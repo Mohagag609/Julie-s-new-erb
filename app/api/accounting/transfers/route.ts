@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createCashTransfer } from '@/lib/accounting';
 import { prisma } from '@/lib/prisma';
+import Decimal from 'decimal.js';
 
 const TransferSchema = z.object({
   date: z.string().pipe(z.coerce.date()),
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       date: data.date,
       fromCashboxId: data.fromCashboxId,
       toCashboxId: data.toCashboxId,
-      amount: data.amount,
+      amount: new Decimal(data.amount),
       note: data.note,
     });
 
