@@ -3,10 +3,23 @@ import Decimal from 'decimal.js';
 import { z } from 'zod';
 
 // --- Zod Schemas for Validation ---
+const decimalSchema = z.union([z.string(), z.number()])
+  .transform((val, ctx) => {
+    try {
+      return new Decimal(val);
+    } catch (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid decimal value. Must be a number or a string representing a number.",
+      });
+      return z.NEVER;
+    }
+  });
+
 const JournalLineSchema = z.object({
   accountId: z.string(),
-  debit: z.number().or(z.string()).pipe(z.coerce.decimal()),
-  credit: z.number().or(z.string()).pipe(z.coerce.decimal()),
+  debit: decimalSchema,
+  credit: decimalSchema,
 }).refine(data => !(data.debit.isPositive() && data.credit.isPositive()), {
   message: 'A line cannot have both debit and credit.',
 }).refine(data => !data.debit.isNegative() && !data.credit.isNegative(), {
