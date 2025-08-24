@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import React from 'react';
+import { Partner } from '@prisma/client';
 
 const tableStyle: React.CSSProperties = {
   width: '100%',
@@ -69,7 +70,7 @@ async function addPartner(formData: FormData) {
 }
 
 const PartnersPage = async () => {
-  let partners = [];
+  let partners: Partner[] = [];
   try {
     partners = await prisma.partner.findMany({
       orderBy: { createdAt: 'desc' },

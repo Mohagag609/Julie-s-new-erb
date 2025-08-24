@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import React from 'react';
+import { Return, Unit } from '@prisma/client';
 
 const tableStyle: React.CSSProperties = {
   width: '100%',
@@ -29,8 +30,10 @@ const placeholderStyle: React.CSSProperties = {
     textAlign: 'center',
 }
 
+type ReturnWithUnit = Return & { unit: Unit };
+
 const ReturnsPage = async () => {
-  let returns = [];
+  let returns: ReturnWithUnit[] = [];
   try {
     returns = await prisma.return.findMany({
       orderBy: { createdAt: 'desc' },
