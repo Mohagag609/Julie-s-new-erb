@@ -1,0 +1,255 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Phase 1: Real Estate Core
+
+model Client {
+  id        String     @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?    @unique
+  address   String?
+  note      String?
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id     String  @id @default(cuid())
+  code   String  @unique
+  name   String
+  status String  @default("active") // "active|paused|closed"
+  units  Unit[]
+  projectPartners ProjectPartner[]
+
+  startDate DateTime
+  endDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Unit {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  type        String // e.g., "residential", "commercial"
+  area        Float?
+  price       Decimal    @db.Decimal(18, 2)
+  downPayment Decimal?   @db.Decimal(18, 2)
+  status      String     @default("available") // available|sold|returned
+  description String?
+  contracts   Contract[]
+  returns     Return[]
+
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contract {
+  id           String        @id @default(cuid())
+  startDate    DateTime
+  totalAmount  Decimal       @db.Decimal(18, 2)
+  downPayment  Decimal       @db.Decimal(18, 2)
+  months       Int
+  planType     String // MONTHLY|QUARTERLY|YEARLY
+  notes        String?
+  installments Installment[]
+
+  client   Client @relation(fields: [clientId], references: [id])
+  clientId String
+
+  unit   Unit   @relation(fields: [unitId], references: [id])
+  unitId String @unique // A unit can only have one active contract
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Installment {
+  id         String   @id @default(cuid())
+  amount     Decimal  @db.Decimal(18, 2)
+  dueDate    DateTime
+  status     String   @default("PENDING") // PENDING|PAID|OVERDUE
+  paidAt     DateTime?
+
+  contract   Contract @relation(fields: [contractId], references: [id])
+  contractId String
+
+  bankImport BankImport?
+
+  createdAt DateTime @default(now())
+}
+
+// General Purpose Audit Log
+model AuditLog {
+  id       String   @id @default(cuid())
+  action   String // e.g., "CREATE_CLIENT", "SEED_DATABASE"
+  entity   String // e.g., "Client", "Unit"
+  entityId String
+  meta     Json?
+  at       DateTime @default(now())
+}
+
+// Phase 2: Partners & Returns
+
+model Partner {
+  id              String           @id @default(cuid())
+  name            String
+  phone           String?
+  note            String?
+  projectPartners ProjectPartner[]
+
+  createdAt DateTime @default(now())
+}
+
+model ProjectPartner {
+  id        String  @id @default(cuid())
+  sharePct  Decimal @db.Decimal(5, 2) // e.g., 50.00 for 50%
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  partner   Partner @relation(fields: [partnerId], references: [id])
+  partnerId String
+
+  @@unique([projectId, partnerId])
+}
+
+model Return {
+  id           String   @id @default(cuid())
+  reason       String?
+  resaleStatus String   @default("pending") // "pending|resold"
+  createdAt    DateTime @default(now())
+
+  unit   Unit   @relation(fields: [unitId], references: [id])
+  unitId String @unique // A unit can only be returned once
+}
+
+// Phase 3: Core Accounting
+
+enum AccountType {
+  asset
+  liability
+  equity
+  revenue
+  expense
+}
+
+model Account {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  type      AccountType
+  cashboxes Cashbox[]
+  lines     JournalLine[]
+
+  parent   Account?  @relation("AccountHierarchy", fields: [parentAccountId], references: [id])
+  parentAccountId String?
+  children Account[] @relation("AccountHierarchy")
+}
+
+model Cashbox {
+  id                String     @id @default(cuid())
+  code              String     @unique
+  name              String
+  branch            String?
+  vouchers          Voucher[]
+  transfersFrom     Transfer[] @relation("FromCashbox")
+  transfersTo       Transfer[] @relation("ToCashbox")
+
+  account   Account @relation(fields: [accountId], references: [id])
+  accountId String
+}
+
+model JournalEntry {
+  id          String        @id @default(cuid())
+  date        DateTime
+  ref         String?
+  description String?
+  posted      Boolean       @default(true)
+  lines       JournalLine[]
+  voucher     Voucher?
+  transfer    Transfer?
+
+  // For reversing entries
+  reversedEntry   JournalEntry? @relation("Reversals", fields: [reversedEntryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reversedEntryId String?       @unique
+  reverses        JournalEntry? @relation("Reversals")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model JournalLine {
+  id        String  @id @default(cuid())
+  debit     Decimal @db.Decimal(18, 2) @default(0)
+  credit    Decimal @db.Decimal(18, 2) @default(0)
+
+  entry     JournalEntry @relation(fields: [entryId], references: [id])
+  entryId   String
+
+  account   Account @relation(fields: [accountId], references: [id])
+  accountId String
+}
+
+model Voucher {
+  id     String   @id @default(cuid())
+  kind   String // "receipt" or "payment"
+  date   DateTime
+  amount Decimal  @db.Decimal(18, 2)
+  note   String?
+
+  cashbox      Cashbox      @relation(fields: [cashboxId], references: [id])
+  cashboxId    String
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
+  journalEntryId String     @unique
+}
+
+model Transfer {
+  id     String   @id @default(cuid())
+  date   DateTime
+  amount Decimal  @db.Decimal(18, 2)
+  note   String?
+
+  fromCashbox   Cashbox @relation("FromCashbox", fields: [fromCashboxId], references: [id])
+  fromCashboxId String
+
+  toCashbox   Cashbox @relation("ToCashbox", fields: [toCashboxId], references: [id])
+  toCashboxId String
+
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id])
+  journalEntryId String       @unique
+}
+
+// Phase 4: Bank Matching
+
+model BankImport {
+  id        String  @id @default(cuid())
+  date      DateTime
+  amount    Decimal @db.Decimal(18, 2)
+  type      String // "debit" or "credit"
+  reference String?
+  bankName  String?
+  description String?
+  posted    Boolean @default(false)
+
+  // Link to the installment it was matched with
+  matchedInstallment   Installment? @relation(fields: [matchedInstallmentId], references: [id])
+  matchedInstallmentId String?      @unique
+
+  createdAt DateTime @default(now())
+}
